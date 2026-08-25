@@ -1,0 +1,1 @@
+"""app/integrations — outbound connectors to third-party services (Supabase, notification providers)."""
