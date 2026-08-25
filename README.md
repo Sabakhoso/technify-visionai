@@ -61,3 +61,7 @@ Backend configuration is loaded from `backend/.env`. Copy `backend/.env.example`
 ## Project Status
 
 Early development (MVP). The data model, authentication, multi-tenant isolation, and database migrations are in place; detection ingestion and alerting are in progress.
+
+## License
+
+Proprietary — all rights reserved.
