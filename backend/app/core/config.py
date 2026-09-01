@@ -1,151 +1,242 @@
+
 """
 Centralized application configuration.
 
-All values are loaded from environment variables (.env file locally,
-real environment variables in production/Docker/CI). Nothing here is
-hardcoded — this file only defines *shape*, *types*, *defaults for
-non-secret values*, and *validation rules*.
+Technify VisionAI + Supabase ES256
 
-Secrets (API keys, DB passwords, JWT secret) must always come from
-the environment and are never given fallback values here — if they're
-missing, the app should fail fast at startup rather than run silently
-with broken or empty credentials.
+All values are loaded from environment variables (.env locally,
+real environment variables in production/CI).
+
+Supabase uses ES256 asymmetric JWT signing in this project.
+Therefore, this configuration does NOT require SUPABASE_JWT_SECRET.
+
+JWT verification will use Supabase's public JWKS endpoint.
 """
 
 from functools import lru_cache
 from typing import List, Optional
 
-from pydantic import Field, PostgresDsn, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # --------------------------------------------------------------------
-    # App metadata
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Application
+    # ------------------------------------------------------------------
+
     PROJECT_NAME: str = "Technify VisionAI"
+
     API_V1_PREFIX: str = "/api/v1"
-    ENVIRONMENT: str = Field(default="development")  # development | staging | production
-    LOG_LEVEL: str = Field(default="INFO")  # DEBUG | INFO | WARNING | ERROR | CRITICAL
 
-    # --------------------------------------------------------------------
+    ENVIRONMENT: str = Field(
+        default="development",
+        description="development | staging | production",
+    )
+
+    LOG_LEVEL: str = Field(
+        default="INFO",
+        description="DEBUG | INFO | WARNING | ERROR | CRITICAL",
+    )
+
+    # ------------------------------------------------------------------
     # Supabase
-    # --------------------------------------------------------------------
-    SUPABASE_URL: str = Field(..., description="Supabase project URL")
-    SUPABASE_ANON_KEY: str = Field(..., description="Supabase publishable/anon key")
-    SUPABASE_SERVICE_ROLE_KEY: str = Field(..., description="Supabase secret/service_role key")
-    SUPABASE_JWT_SECRET: Optional[str] = Field(
-        default=None,
-        description="Supabase project JWT secret (Project Settings -> API -> JWT Secret). "
-        "Required when SUPABASE_JWT_ALGORITHM is HS256; unused for asymmetric (JWKS) projects.",
+    # ------------------------------------------------------------------
+
+    SUPABASE_URL: str = Field(
+        ...,
+        description="Supabase project URL",
     )
+
+    SUPABASE_ANON_KEY: str = Field(
+        ...,
+        description="Supabase publishable/anon key",
+    )
+
+    SUPABASE_SERVICE_ROLE_KEY: str = Field(
+        ...,
+        description="Supabase secret/service_role key for backend operations",
+    )
+
+    # ------------------------------------------------------------------
+    # Supabase JWT
+    # ------------------------------------------------------------------
+    #
+    # Your Supabase project uses ES256.
+    #
+    # ES256 is asymmetric JWT signing, so the backend does NOT need
+    # the legacy SUPABASE_JWT_SECRET.
+    #
+    # JWT verification will use the public JWKS endpoint.
+    # ------------------------------------------------------------------
+
     SUPABASE_JWT_ALGORITHM: str = Field(
-        default="HS256",
-        description="HS256 for the legacy symmetric secret; RS256/ES256 for projects migrated "
-        "to asymmetric signing keys (verified via the JWKS endpoint).",
+        default="ES256",
+        description="Supabase JWT signing algorithm",
     )
 
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Database
-    # --------------------------------------------------------------------
-    DATABASE_URL: str = Field(..., description="Async Postgres connection string (asyncpg driver)")
+    # ------------------------------------------------------------------
 
-    # --------------------------------------------------------------------
-    # Security / JWT
-    # --------------------------------------------------------------------
-    SECRET_KEY: str = Field(..., min_length=32, description="Secret used to sign JWTs")
+    DATABASE_URL: str = Field(
+        ...,
+        description=(
+            "Async PostgreSQL connection string for SQLAlchemy. "
+            "Expected format: postgresql+asyncpg://..."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Application Security
+    # ------------------------------------------------------------------
+
+    SECRET_KEY: str = Field(
+        ...,
+        min_length=32,
+        description=(
+            "Secret used by the Technify VisionAI application "
+            "for its own security operations"
+        ),
+    )
+
     ALGORITHM: str = "HS256"
+
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # CORS
-    # --------------------------------------------------------------------
-    # Comma-separated list in .env, e.g.:
-    # CORS_ORIGINS=http://localhost:3000,https://app.technify-visionai.com
+    # ------------------------------------------------------------------
+
+    # Example:
+    #
+    # CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+    #
+
     CORS_ORIGINS: str = "http://localhost:3000"
 
-    # --------------------------------------------------------------------
-    # Redis (optional for now — used later for event caching/rate limiting)
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Redis
+    # ------------------------------------------------------------------
+
     REDIS_URL: Optional[str] = None
 
-    # --------------------------------------------------------------------
-    # Notifications (optional — filled in when we build alerting)
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Notifications
+    # ------------------------------------------------------------------
+
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: Optional[int] = None
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
+
     TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_AUTH_TOKEN: Optional[str] = None
+
     WHATSAPP_API_KEY: Optional[str] = None
 
-    # --------------------------------------------------------------------
-    # Edge AI Gateway (optional — filled in once the edge server exists)
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Edge AI Gateway
+    # ------------------------------------------------------------------
+
     EDGE_AI_GATEWAY_URL: Optional[str] = None
 
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Validators
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     @field_validator("DATABASE_URL")
     @classmethod
-    def validate_database_url(cls, v: str) -> str:
-        if not v.startswith("postgresql+asyncpg://"):
+    def validate_database_url(cls, value: str) -> str:
+        """
+        Ensure the database URL uses the async PostgreSQL driver.
+        """
+
+        if not value.startswith("postgresql+asyncpg://"):
             raise ValueError(
-                "DATABASE_URL must use the 'postgresql+asyncpg://' scheme for the async "
-                "SQLAlchemy engine. Supabase gives you 'postgresql://' by default — "
-                "change the prefix in your .env."
+                "DATABASE_URL must use the "
+                "'postgresql+asyncpg://' scheme for the async "
+                "SQLAlchemy engine."
             )
-        return v
+
+        return value
 
     @field_validator("SUPABASE_URL")
     @classmethod
-    def validate_supabase_url(cls, v: str) -> str:
-        if not v.startswith("https://") or ".supabase.co" not in v:
+    def validate_supabase_url(cls, value: str) -> str:
+        """
+        Validate the Supabase project URL.
+        """
+
+        if not value.startswith("https://") or ".supabase.co" not in value:
             raise ValueError(
                 "SUPABASE_URL looks malformed. Expected format: "
                 "https://<project-ref>.supabase.co"
             )
-        return v.rstrip("/")
+
+        return value.rstrip("/")
+
+    @field_validator("SUPABASE_JWT_ALGORITHM")
+    @classmethod
+    def validate_jwt_algorithm(cls, value: str) -> str:
+        """
+        Validate the Supabase JWT signing algorithm.
+        """
+
+        value = value.upper()
+
+        allowed_algorithms = {
+            "ES256",
+            "RS256",
+            "HS256",
+        }
+
+        if value not in allowed_algorithms:
+            raise ValueError(
+                "SUPABASE_JWT_ALGORITHM must be one of "
+                f"{allowed_algorithms}, got '{value}'"
+            )
+
+        return value
 
     @field_validator("ENVIRONMENT")
     @classmethod
-    def validate_environment(cls, v: str) -> str:
-        allowed = {"development", "staging", "production"}
-        v_lower = v.lower()
-        if v_lower not in allowed:
-            raise ValueError(f"ENVIRONMENT must be one of {allowed}, got '{v}'")
-        return v_lower
+    def validate_environment(cls, value: str) -> str:
+        """
+        Validate the application environment.
+        """
 
-    @model_validator(mode="after")
-    def warn_on_weak_secret_in_production(self) -> "Settings":
-        if self.ENVIRONMENT == "production" and self.SECRET_KEY.startswith("change-this"):
+        allowed_environments = {
+            "development",
+            "staging",
+            "production",
+        }
+
+        value = value.lower()
+
+        if value not in allowed_environments:
             raise ValueError(
-                "SECRET_KEY appears to be a placeholder value. "
-                "Generate a real one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+                "ENVIRONMENT must be one of "
+                f"{allowed_environments}, got '{value}'"
             )
-        return self
 
-    @model_validator(mode="after")
-    def require_jwt_secret_for_hs256(self) -> "Settings":
-        if self.SUPABASE_JWT_ALGORITHM == "HS256" and not self.SUPABASE_JWT_SECRET:
-            raise ValueError(
-                "SUPABASE_JWT_SECRET is required when SUPABASE_JWT_ALGORITHM is 'HS256'. "
-                "Copy it from Supabase → Project Settings → API → JWT Secret, or switch "
-                "SUPABASE_JWT_ALGORITHM to RS256/ES256 if your project uses asymmetric keys."
-            )
-        return self
+        return value
 
-    # --------------------------------------------------------------------
-    # Derived / computed properties
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Derived properties
+    # ------------------------------------------------------------------
 
     @property
     def cors_origins_list(self) -> List[str]:
-        """Parses the comma-separated CORS_ORIGINS string into a clean list."""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        """
+        Convert comma-separated CORS origins into a list.
+        """
+
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
     @property
     def is_production(self) -> bool:
@@ -155,9 +246,30 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         return self.ENVIRONMENT == "development"
 
-    # --------------------------------------------------------------------
-    # Pydantic settings config
-    # --------------------------------------------------------------------
+    @property
+    def supabase_jwks_url(self) -> str:
+        """
+        Public Supabase JWKS endpoint used for asymmetric JWT
+        signature verification.
+        """
+
+        return (
+            f"{self.SUPABASE_URL}"
+            "/auth/v1/.well-known/jwks.json"
+        )
+
+    @property
+    def supabase_jwt_issuer(self) -> str:
+        """
+        Expected issuer for Supabase Auth JWTs.
+        """
+
+        return f"{self.SUPABASE_URL}/auth/v1"
+
+    # ------------------------------------------------------------------
+    # Pydantic Settings Configuration
+    # ------------------------------------------------------------------
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -166,18 +278,26 @@ class Settings(BaseSettings):
     )
 
 
+# ----------------------------------------------------------------------
+# Cached settings loader
+# ----------------------------------------------------------------------
+
 @lru_cache
 def get_settings() -> Settings:
     """
-    Cached settings loader.
-
-    Using lru_cache means the .env file is only read and validated once
-    per process, not on every import — this matters for performance since
-    config.settings gets imported across many modules (main.py, database.py,
-    every endpoint, every service).
+    Load and validate settings once per process.
     """
+
     return Settings()
 
+@property
+def supabase_jwks_url(self) -> str:
+    """Supabase JWKS endpoint used to verify ES256 JWTs."""
+    return f"{self.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 
-# Module-level singleton — import this everywhere as `from app.core.config import settings`
+
+# ----------------------------------------------------------------------
+# Module-level settings instance
+# ----------------------------------------------------------------------
+
 settings = get_settings()

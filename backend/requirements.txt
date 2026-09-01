@@ -14,3 +14,4 @@ passlib[bcrypt]
 httpx
 redis
 onnxruntime
+psycopg[binary]
