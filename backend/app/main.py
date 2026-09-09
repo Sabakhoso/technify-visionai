@@ -13,15 +13,18 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
-from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.database import check_database_connection, dispose_engine
+from app.core.database import (
+    check_database_connection,
+    dispose_engine,
+)
+from app.api.v1.router import api_router
 
 
 # --------------------------------------------------------------------------
@@ -42,41 +45,48 @@ logger = logging.getLogger("technify_visionai")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ---- Startup ----
+    # ---------------- Startup ----------------
     logger.info(
-        f"Starting {settings.PROJECT_NAME} [{settings.ENVIRONMENT}]"
+        f"Starting {settings.PROJECT_NAME} "
+        f"[{settings.ENVIRONMENT}]"
     )
 
     db_ok = await check_database_connection()
 
     if db_ok:
-        logger.info("Database connection verified.")
+        logger.info("✅ Database connection verified.")
     else:
         logger.error(
-            "Database connection FAILED at startup — "
+            "❌ Database connection FAILED at startup — "
             "check DATABASE_URL in .env"
         )
 
     yield
 
-    # ---- Shutdown ----
-    logger.info("Shutting down — disposing database engine.")
+    # ---------------- Shutdown ----------------
+    logger.info(
+        "Shutting down — disposing database engine."
+    )
+
     await dispose_engine()
 
 
 # --------------------------------------------------------------------------
-# App instance
+# FastAPI application
 # --------------------------------------------------------------------------
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=__version__,
     description=(
-        "AI-powered video surveillance and security intelligence platform."
+        "AI-powered video surveillance and "
+        "security intelligence platform."
     ),
     docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
-    openapi_url="/openapi.json" if not settings.is_production else None,
+    openapi_url="/openapi.json"
+    if not settings.is_production
+    else None,
     lifespan=lifespan,
 )
 
@@ -103,11 +113,16 @@ async def http_exception_handler(
     request: Request,
     exc: StarletteHTTPException,
 ):
-    """Handle HTTP errors such as 404, 401 and 403."""
+    """
+    Handles HTTP exceptions such as:
+    401, 403, 404, etc.
+    """
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={
+            "detail": exc.detail
+        },
     )
 
 
@@ -116,11 +131,14 @@ async def validation_exception_handler(
     request: Request,
     exc: RequestValidationError,
 ):
-    """Handle request validation errors."""
+    """
+    Handles Pydantic/FastAPI validation errors.
+    """
 
     logger.warning(
-        f"Validation error on {request.method} "
-        f"{request.url.path}: {exc.errors()}"
+        f"Validation error on "
+        f"{request.method} {request.url.path}: "
+        f"{exc.errors()}"
     )
 
     return JSONResponse(
@@ -138,13 +156,14 @@ async def unhandled_exception_handler(
     exc: Exception,
 ):
     """
-    Catch unexpected errors so clients do not receive raw tracebacks.
+    Handles unexpected server errors.
+
     Full error is logged server-side.
     """
 
     logger.exception(
-        f"Unhandled exception on {request.method} "
-        f"{request.url.path}: {exc}"
+        f"Unhandled exception on "
+        f"{request.method} {request.url.path}: {exc}"
     )
 
     return JSONResponse(
@@ -165,6 +184,10 @@ async def unhandled_exception_handler(
 
 @app.get("/", tags=["Root"])
 async def root():
+    """
+    Basic API information.
+    """
+
     return {
         "project": settings.PROJECT_NAME,
         "status": "running",
@@ -184,9 +207,11 @@ async def root():
 @app.get("/health", tags=["Root"])
 async def health():
     """
-    Health check for uptime monitoring / load balancers.
+    Health check.
 
-    Verifies both the API process and database connection.
+    Verifies both:
+    - API process
+    - Database connection
     """
 
     db_ok = await check_database_connection()
@@ -200,22 +225,40 @@ async def health():
     return JSONResponse(
         status_code=status_code,
         content={
-            "status": "healthy" if db_ok else "unhealthy",
-            "database": "connected" if db_ok else "disconnected",
+            "status": (
+                "healthy"
+                if db_ok
+                else "unhealthy"
+            ),
+            "database": (
+                "connected"
+                if db_ok
+                else "disconnected"
+            ),
             "environment": settings.ENVIRONMENT,
         },
     )
 
 
 # --------------------------------------------------------------------------
-# API routers
+# API v1 routers
 # --------------------------------------------------------------------------
-
+#
 # IMPORTANT:
-# app must be created before include_router() is called.
+# app must be created BEFORE include_router().
+#
 
 app.include_router(
     api_router,
     prefix=settings.API_V1_PREFIX,
+)
+
+
+# --------------------------------------------------------------------------
+# Application startup message
+# --------------------------------------------------------------------------
+
+logger.info(
+    "Technify VisionAI application configured successfully."
 )
 

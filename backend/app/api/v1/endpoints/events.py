@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.models.event import Event
+from app.crud.event import create_event
+from app.schemas.event import EventCreate, EventResponse
 
 
 router = APIRouter(
@@ -14,12 +16,29 @@ router = APIRouter(
 )
 
 
+@router.post(
+    "/",
+    response_model=EventResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_new_event(
+    event_data: EventCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new security event."""
+    event = await create_event(
+        db=db,
+        event_data=event_data,
+    )
+
+    return event
+
+
 @router.get("/", response_model=List[dict])
 async def get_events(
     db: AsyncSession = Depends(get_db),
 ):
     """Return all security events."""
-
     result = await db.execute(
         select(Event).order_by(Event.created_at.desc())
     )
@@ -44,7 +63,6 @@ async def get_event(
     db: AsyncSession = Depends(get_db),
 ):
     """Return a single event."""
-
     result = await db.execute(
         select(Event).where(Event.id == event_id)
     )

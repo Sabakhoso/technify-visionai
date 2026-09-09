@@ -1,8 +1,9 @@
+
 """
 Technify VisionAI — Authentication API
 
 Authentication is handled by Supabase.
-The backend verifies Supabase access tokens using ES256/JWKS.
+The backend verifies Supabase access tokens.
 """
 
 from typing import Optional
@@ -22,7 +23,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 # --------------------------------------------------------------------------
-# Verify current Supabase user
+# Get current authenticated user
 # --------------------------------------------------------------------------
 
 @router.get("/me")
@@ -42,19 +43,24 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = await verify_supabase_token(credentials.credentials)
+    user = verify_supabase_token(credentials.credentials)
 
     return {
         "authenticated": True,
-        "user_id": payload.get("sub"),
-        "email": payload.get("email"),
-        "role": payload.get("role"),
-        "audience": payload.get("aud"),
+        "user_id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "app_role": user.app_role,
+        "organization_id": (
+            str(user.organization_id)
+            if user.organization_id
+            else None
+        ),
     }
 
 
 # --------------------------------------------------------------------------
-# Token verification endpoint
+# Verify token
 # --------------------------------------------------------------------------
 
 @router.post("/verify")
@@ -74,10 +80,13 @@ async def verify_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = await verify_supabase_token(credentials.credentials)
+    user = verify_supabase_token(credentials.credentials)
 
     return {
         "valid": True,
-        "user_id": payload.get("sub"),
-        "email": payload.get("email"),
+        "user_id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "app_role": user.app_role,
     }
+

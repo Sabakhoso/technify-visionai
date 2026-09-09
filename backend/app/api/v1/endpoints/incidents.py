@@ -1,11 +1,22 @@
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.models.incident import Incident
+from app.crud.incident import (
+    create_incident,
+    delete_incident,
+    get_incident,
+    get_incidents,
+    update_incident,
+)
+from app.schemas.incident import (
+    IncidentCreate,
+    IncidentResponse,
+    IncidentUpdate,
+)
 
 
 router = APIRouter(
@@ -14,41 +25,46 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[dict])
-async def get_incidents(
+@router.post(
+    "/",
+    response_model=IncidentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_new_incident(
+    incident_data: IncidentCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new incident."""
+    return await create_incident(
+        db=db,
+        incident_data=incident_data,
+    )
+
+
+@router.get(
+    "/",
+    response_model=List[IncidentResponse],
+)
+async def get_all_incidents(
     db: AsyncSession = Depends(get_db),
 ):
     """Return all incidents."""
-
-    result = await db.execute(
-        select(Incident)
-    )
-
-    incidents = result.scalars().all()
-
-    return [
-        {
-            "id": str(incident.id),
-            "status": getattr(incident, "status", None),
-            "severity": getattr(incident, "severity", None),
-            "description": getattr(incident, "description", None),
-        }
-        for incident in incidents
-    ]
+    return await get_incidents(db=db)
 
 
-@router.get("/{incident_id}", response_model=dict)
-async def get_incident(
-    incident_id: str,
+@router.get(
+    "/{incident_id}",
+    response_model=IncidentResponse,
+)
+async def get_single_incident(
+    incident_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     """Return a single incident."""
-
-    result = await db.execute(
-        select(Incident).where(Incident.id == incident_id)
+    incident = await get_incident(
+        db=db,
+        incident_id=incident_id,
     )
-
-    incident = result.scalar_one_or_none()
 
     if incident is None:
         raise HTTPException(
@@ -56,9 +72,58 @@ async def get_incident(
             detail="Incident not found",
         )
 
-    return {
-        "id": str(incident.id),
-        "status": getattr(incident, "status", None),
-        "severity": getattr(incident, "severity", None),
-        "description": getattr(incident, "description", None),
-    }
+    return incident
+
+
+@router.put(
+    "/{incident_id}",
+    response_model=IncidentResponse,
+)
+async def update_existing_incident(
+    incident_id: UUID,
+    incident_data: IncidentUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an existing incident."""
+    incident = await get_incident(
+        db=db,
+        incident_id=incident_id,
+    )
+
+    if incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incident not found",
+        )
+
+    return await update_incident(
+        db=db,
+        incident=incident,
+        incident_data=incident_data,
+    )
+
+
+@router.delete(
+    "/{incident_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_existing_incident(
+    incident_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an existing incident."""
+    incident = await get_incident(
+        db=db,
+        incident_id=incident_id,
+    )
+
+    if incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incident not found",
+        )
+
+    await delete_incident(
+        db=db,
+        incident=incident,
+    )

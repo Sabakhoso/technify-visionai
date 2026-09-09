@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
@@ -5,16 +6,18 @@ from app.api.v1.endpoints import (
     analytics,
     auth,
     cameras,
+    detections,
     events,
     incidents,
     organizations,
     rules,
     search,
-    zones,
+    zone,
 )
 
 
 api_router = APIRouter()
+
 
 api_router.include_router(
     alerts.router,
@@ -38,6 +41,12 @@ api_router.include_router(
     cameras.router,
     prefix="/cameras",
     tags=["Cameras"],
+)
+
+api_router.include_router(
+    detections.router,
+    prefix="/detections",
+    tags=["Detections"],
 )
 
 api_router.include_router(
@@ -71,7 +80,8 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    zones.router,
+    zone.router,
     prefix="/zones",
     tags=["Zones"],
 )
+
