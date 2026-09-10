@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.rule import get_matching_rules
+from app.models.alert import Alert
 from app.models.detection import Detection
 from app.models.event import Event
 from app.models.incident import Incident
@@ -29,6 +30,8 @@ async def create_detection(
         High/Critical Event
             ↓
         Incident
+            ↓
+        Dashboard Alert
     """
 
     detection = Detection(
@@ -40,6 +43,7 @@ async def create_detection(
 
     # Respect an explicitly supplied event_id.
     if detection.event_id is None:
+
         matching_rules = await get_matching_rules(
             db=db,
             organization_id=detection.organization_id,
@@ -48,12 +52,14 @@ async def create_detection(
         )
 
         for rule in matching_rules:
+
             # Ignore rules that don't request event creation.
             if "create_event" not in (rule.actions or []):
                 continue
 
             # If the rule has a zone, the detection must be inside it.
             if rule.zone_id is not None:
+
                 result = await db.execute(
                     select(Zone).where(
                         Zone.id == rule.zone_id,
@@ -74,7 +80,10 @@ async def create_detection(
                 ):
                     continue
 
-            # Create the event.
+            # ---------------------------------------------------------
+            # 1. Create Event
+            # ---------------------------------------------------------
+
             event = Event(
                 organization_id=detection.organization_id,
                 camera_id=detection.camera_id,
@@ -93,14 +102,18 @@ async def create_detection(
             db.add(event)
             await db.flush()
 
-            # Link detection → event.
+            # Link Detection → Event.
             detection.event_id = event.id
 
-            # Create an Incident only for serious events.
+            # ---------------------------------------------------------
+            # 2. Create Incident for High/Critical events
+            # ---------------------------------------------------------
+
             if rule.severity.lower() in {"high", "critical"}:
+
                 incident = Incident(
                     organization_id=detection.organization_id,
-                    title=f"{rule.name}",
+                    title=rule.name,
                     status="open",
                     severity=rule.severity,
                     summary=(
@@ -113,8 +126,25 @@ async def create_detection(
                 db.add(incident)
                 await db.flush()
 
-                # Link event → incident.
+                # Link Event → Incident.
                 event.incident_id = incident.id
+
+                # -----------------------------------------------------
+                # 3. Create Dashboard Alert automatically
+                # -----------------------------------------------------
+
+                alert = Alert(
+                    organization_id=detection.organization_id,
+                    event_id=event.id,
+                    incident_id=incident.id,
+                    user_id=None,
+                    channel="dashboard",
+                    destination="security-dashboard",
+                    status="pending",
+                )
+
+                db.add(alert)
+                await db.flush()
 
             # For now, create only one event per detection.
             break

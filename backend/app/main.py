@@ -1,30 +1,34 @@
-
 """
 Technify VisionAI — Application Entrypoint
 
 Run locally:
+
     uvicorn app.main:app --reload
 
 Run in production:
+
     uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 """
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
+from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import (
     check_database_connection,
     dispose_engine,
+    get_db_context,
 )
-from app.api.v1.router import api_router
+from app.services.camera_monitor import check_all_cameras
 
 
 # --------------------------------------------------------------------------
@@ -46,11 +50,13 @@ logger = logging.getLogger("technify_visionai")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---------------- Startup ----------------
+
     logger.info(
         f"Starting {settings.PROJECT_NAME} "
         f"[{settings.ENVIRONMENT}]"
     )
 
+    # Check database connection
     db_ok = await check_database_connection()
 
     if db_ok:
@@ -61,14 +67,79 @@ async def lifespan(app: FastAPI):
             "check DATABASE_URL in .env"
         )
 
-    yield
+    # ------------------------------------------------------------------
+    # Camera health monitor
+    # ------------------------------------------------------------------
 
-    # ---------------- Shutdown ----------------
-    logger.info(
-        "Shutting down — disposing database engine."
+    async def camera_monitor_loop():
+        """
+        Periodically check all active cameras and update their
+        health status in the database.
+        """
+
+        interval_seconds = 30
+
+        logger.info(
+            f"Camera health monitor interval: "
+            f"{interval_seconds} seconds."
+        )
+
+        while True:
+            try:
+                async with get_db_context() as db:
+                    await check_all_cameras(db)
+
+                logger.debug(
+                    "Camera health check completed successfully."
+                )
+
+            except asyncio.CancelledError:
+                logger.info(
+                    "Camera health monitor cancellation requested."
+                )
+                raise
+
+            except Exception:
+                logger.exception(
+                    "Unexpected error during camera health check."
+                )
+
+            await asyncio.sleep(interval_seconds)
+
+    # Start monitor in background
+    camera_monitor_task = asyncio.create_task(
+        camera_monitor_loop()
     )
 
-    await dispose_engine()
+    logger.info(
+        "✅ Camera health monitor started."
+    )
+
+    try:
+        yield
+
+    finally:
+        # ---------------- Shutdown ----------------
+
+        logger.info(
+            "Shutting down camera health monitor."
+        )
+
+        camera_monitor_task.cancel()
+
+        try:
+            await camera_monitor_task
+
+        except asyncio.CancelledError:
+            logger.info(
+                "Camera health monitor stopped."
+            )
+
+        logger.info(
+            "Shutting down — disposing database engine."
+        )
+
+        await dispose_engine()
 
 
 # --------------------------------------------------------------------------
@@ -84,9 +155,11 @@ app = FastAPI(
     ),
     docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
-    openapi_url="/openapi.json"
-    if not settings.is_production
-    else None,
+    openapi_url=(
+        "/openapi.json"
+        if not settings.is_production
+        else None
+    ),
     lifespan=lifespan,
 )
 
@@ -243,6 +316,7 @@ async def health():
 # --------------------------------------------------------------------------
 # API v1 routers
 # --------------------------------------------------------------------------
+
 #
 # IMPORTANT:
 # app must be created BEFORE include_router().
@@ -261,4 +335,3 @@ app.include_router(
 logger.info(
     "Technify VisionAI application configured successfully."
 )
-

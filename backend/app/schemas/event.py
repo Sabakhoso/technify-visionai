@@ -22,6 +22,7 @@ class EventCreate(BaseModel):
 class EventResponse(BaseModel):
     id: UUID
     organization_id: UUID
+    incident_id: Optional[UUID] = None
     camera_id: UUID
     event_type: str
     severity: EventSeverity
