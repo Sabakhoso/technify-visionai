@@ -1,0 +1,2 @@
+backend/models/*.pt filter=lfs diff=lfs merge=lfs -text
+backend/test_videos/*.mp4 filter=lfs diff=lfs merge=lfs -text
