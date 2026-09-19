@@ -6,6 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.ai_camera_manager import (
+    start_camera_ai,
+    stop_camera_ai,
+    is_camera_ai_running,
+)
+
 from app.api.deps import get_db
 from app.crud.camera import (
     create_camera,
@@ -261,3 +267,66 @@ async def check_camera_health(
         db=db,
         camera=camera,
     )
+
+@router.post("/{camera_id}/ai/start")
+async def start_camera_ai_processing(
+    camera_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Start AI processing for a camera.
+    """
+
+    camera = await get_camera_from_db(
+        db=db,
+        camera_id=camera_id,
+    )
+
+    if camera is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Camera not found",
+        )
+
+    if not camera.rtsp_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Camera has no RTSP URL",
+        )
+
+    await start_camera_ai(camera_id)
+
+    return {
+        "camera_id": str(camera_id),
+        "ai_processing": "started",
+    }
+
+
+@router.post("/{camera_id}/ai/stop")
+async def stop_camera_ai_processing(
+    camera_id: UUID,
+):
+    """
+    Stop AI processing for a camera.
+    """
+
+    await stop_camera_ai(camera_id)
+
+    return {
+        "camera_id": str(camera_id),
+        "ai_processing": "stopped",
+    }
+
+
+@router.get("/{camera_id}/ai/status")
+async def get_camera_ai_status(
+    camera_id: UUID,
+):
+    """
+    Return the AI processing status for a camera.
+    """
+
+    return {
+        "camera_id": str(camera_id),
+        "ai_processing": is_camera_ai_running(camera_id),
+    }
