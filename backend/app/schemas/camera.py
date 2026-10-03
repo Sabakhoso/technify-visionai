@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class CameraCreate(BaseModel):
-    organization_id: UUID
+    organization_id: Optional[UUID] = None
     name: str
     location: Optional[str] = None
     rtsp_url: Optional[str] = None

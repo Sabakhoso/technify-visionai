@@ -2,9 +2,14 @@ import React from "react";
 import { ChevronRight } from "lucide-react";
 import Dropdown from "../common/Dropdown.jsx";
 import CameraRankRow from "./CameraRankRow.jsx";
-import { topCameras } from "../../data/mockData.js";
+import { useAnalytics } from "../../hooks/useAnalytics.js";
+import { toDisplayTopCamera } from "../../utils/dashboardAdapters.js";
 
 export default function TopCamerasPanel() {
+  const { data, status } = useAnalytics("today");
+  const topCameras = data?.top_cameras || [];
+  const maxEvents = topCameras.reduce((max, c) => Math.max(max, c.events), 0);
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-card p-5 h-full flex flex-col">
       <div className="flex items-center justify-between mb-2">
@@ -13,8 +18,17 @@ export default function TopCamerasPanel() {
       </div>
 
       <div className="flex-1 divide-y divide-gray-100">
+        {status === "loading" && (
+          <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+        )}
+        {status === "error" && (
+          <p className="text-sm text-red-500 py-6 text-center">Could not load cameras.</p>
+        )}
+        {status === "ready" && topCameras.length === 0 && (
+          <p className="text-sm text-gray-400 py-6 text-center">No events yet.</p>
+        )}
         {topCameras.map((camera) => (
-          <CameraRankRow key={camera.id} camera={camera} />
+          <CameraRankRow key={camera.camera_id} camera={toDisplayTopCamera(camera, maxEvents)} />
         ))}
       </div>
 

@@ -3,7 +3,6 @@ import { Grid2X2, Grid3X3, Maximize2 } from "lucide-react";
 import Dropdown from "../common/Dropdown.jsx";
 import IconButton from "../common/IconButton.jsx";
 import CameraFeedCard from "./CameraFeedCard.jsx";
-import { liveCameras } from "../../data/mockData.js";
 
 export default function LiveViewPanel() {
   return (
@@ -18,11 +17,11 @@ export default function LiveViewPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+       {/* <div className="grid grid-cols-2 gap-4">
         {liveCameras.map((camera) => (
           <CameraFeedCard key={camera.id} camera={camera} />
         ))}
-      </div>
+      </div>  */}
     </div>
   );
 }

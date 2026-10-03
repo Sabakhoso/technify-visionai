@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCameras } from "../services/camerasService.js";
+import { getCameras, createCamera, updateCamera, deleteCamera } from "../services/camerasService.js";
 import { useCameraSocket } from "./useCameraSocket.js";
 
 /**
@@ -50,5 +50,22 @@ export function useCameras() {
 
   useCameraSocket(handleSocketMessage);
 
-  return { cameras, status, error };
+  const addCamera = useCallback(async (payload) => {
+  const created = await createCamera(payload);
+  setCameras((prev) => [...prev, created]);
+  return created;
+}, []);
+
+const editCamera = useCallback(async (cameraId, payload) => {
+  const updated = await updateCamera(cameraId, payload);
+  setCameras((prev) => prev.map((camera) => (camera.id === cameraId ? updated : camera)));
+  return updated;
+}, []);
+
+const removeCamera = useCallback(async (cameraId) => {
+  await deleteCamera(cameraId);
+  setCameras((prev) => prev.filter((camera) => camera.id !== cameraId));
+}, []);
+
+return { cameras, status, error, addCamera, editCamera, removeCamera };
 }

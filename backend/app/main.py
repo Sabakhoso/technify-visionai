@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+
 from app import __version__
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -169,11 +170,11 @@ app = FastAPI(
 # --------------------------------------------------------------------------
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, #
+    allow_origins=["http://localhost:5173"], #
+    allow_credentials=True, #
+    allow_methods=["*"], #
+    allow_headers=["*"], #
 )
 
 

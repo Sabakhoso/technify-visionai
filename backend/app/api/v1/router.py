@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     organizations,
     rules,
     search,
+    system,
     zone,
 )
 
@@ -84,4 +85,8 @@ api_router.include_router(
     prefix="/zones",
     tags=["Zones"],
 )
-
+api_router.include_router(
+    system.router,
+    prefix="/system",
+    tags=["System"],
+)

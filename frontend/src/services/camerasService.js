@@ -24,3 +24,19 @@ export async function getCamera(cameraId) {
   const { data } = await api.get(`/cameras/${cameraId}`);
   return data;
 }
+/** POST /cameras — registers a new camera; backend should validate/connect the RTSP source */
+export async function createCamera(payload) {
+  const { data } = await api.post("/cameras", payload);
+  return data;
+}
+
+/** PUT /cameras/:id */
+export async function updateCamera(cameraId, payload) {
+  const { data } = await api.put(`/cameras/${cameraId}`, payload);
+  return data;
+}
+
+/** DELETE /cameras/:id */
+export async function deleteCamera(cameraId) {
+  await api.delete(`/cameras/${cameraId}`);
+}

@@ -33,11 +33,13 @@ export default function AlertItem({ alert }) {
         </div>
       </div>
 
-      <img
-        src={alert.thumb}
-        alt={alert.title}
-        className="w-14 h-10 rounded-md object-cover shrink-0"
-      />
+           {alert.thumb && (
+        <img
+          src={alert.thumb}
+          alt={alert.title}
+          className="w-14 h-10 rounded-md object-cover shrink-0"
+        />
+      )}
     </div>
   );
 }

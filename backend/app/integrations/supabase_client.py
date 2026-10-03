@@ -33,6 +33,8 @@ Required package (add to requirements.txt):
 
 from __future__ import annotations
 
+from dotenv import load_dotenv
+load_dotenv()
 import asyncio
 import uuid
 from functools import lru_cache
