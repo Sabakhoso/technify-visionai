@@ -1,4 +1,6 @@
+
 import asyncio
+
 from uuid import UUID
 
 from app.services.ai_camera_processor import process_camera
@@ -12,7 +14,6 @@ async def start_camera_ai(camera_id: UUID) -> None:
     """
     Start AI processing for a camera.
     """
-
     if camera_id in _camera_tasks:
         return
 
@@ -27,7 +28,6 @@ async def stop_camera_ai(camera_id: UUID) -> None:
     """
     Stop AI processing for a camera.
     """
-
     task = _camera_tasks.get(camera_id)
 
     if task is None:
@@ -47,5 +47,5 @@ def is_camera_ai_running(camera_id: UUID) -> bool:
     """
     Check whether AI processing is running for a camera.
     """
-
     return camera_id in _camera_tasks
+

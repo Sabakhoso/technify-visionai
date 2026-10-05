@@ -9,6 +9,7 @@ from app.models.event import Event
 from app.models.detection import Detection
 from app.models.incident import Incident
 from app.models.alert import Alert
+from app.models.evidence import Evidence
 from app.models.audit_log import AuditLog
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "Detection",
     "Incident",
     "Alert",
+    "Evidence",
     "AuditLog",
 ]

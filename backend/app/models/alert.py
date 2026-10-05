@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +42,12 @@ class Alert(UUIDMixin, TimestampMixin, Base):
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
     destination: Mapped[str] = mapped_column(String(320), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'pending'"), index=True)
+    is_read: Mapped[bool] = mapped_column(
+    Boolean,
+    nullable=False,
+    server_default=text("false"),
+    index=True,
+)
     provider: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     provider_message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

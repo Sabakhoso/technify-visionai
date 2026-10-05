@@ -100,3 +100,10 @@ class Event(UUIDMixin, TimestampMixin, Base):
         back_populates="event",
         cascade="all, delete-orphan",
     )
+    
+evidence = relationship(
+    "Evidence",
+    back_populates="event",
+    cascade="all, delete-orphan",
+)
+

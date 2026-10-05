@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-
 class CameraCreate(BaseModel):
     organization_id: Optional[UUID] = None
     name: str
@@ -14,16 +13,17 @@ class CameraCreate(BaseModel):
     is_active: bool = True
     fps: Optional[int] = None
     resolution: Optional[str] = None
-
+    zone: Optional[dict] = None
 
 class CameraUpdate(BaseModel):
-    name: Optional[str] = None
-    location: Optional[str] = None
-    rtsp_url: Optional[str] = None
-    status: Optional[str] = None
-    is_active: Optional[bool] = None
-    fps: Optional[int] = None
-    resolution: Optional[str] = None
+       name: Optional[str] = None
+       location: Optional[str] = None
+       rtsp_url: Optional[str] = None
+       status: Optional[str] = None
+       is_active: Optional[bool] = None
+       fps: Optional[int] = None
+       resolution: Optional[str] = None
+       zone: Optional[dict] = None
 
 
 class CameraResponse(BaseModel):
@@ -36,8 +36,14 @@ class CameraResponse(BaseModel):
     is_active: bool
     fps: Optional[int] = None
     resolution: Optional[str] = None
+    zone: Optional[dict] = None
     last_seen_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+model_config = ConfigDict(from_attributes=True)
+

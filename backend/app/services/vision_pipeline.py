@@ -1,4 +1,7 @@
-from typing import Generator
+from collections import deque
+from typing import Deque, Generator
+
+import numpy as np
 
 from app.ml.inference_client import detect_objects
 from app.ml.model_registry import (
@@ -15,15 +18,23 @@ from app.services.camera_service import (
 )
 
 
+# Number of recent frames kept in memory.
+# At approximately 30 FPS, 150 frames is about 5 seconds.
+FRAME_BUFFER_SIZE = 150
+
+
 def process_camera_stream(
     source: str,
-) -> Generator[list[dict], None, None]:
-    """
-    Read frames from a camera stream and run
-    all specialized YOLO models.
-    """
-
+) -> Generator[
+    tuple[np.ndarray, list[dict], Deque[np.ndarray]],
+    None,
+    None,
+]:
     capture = open_camera_stream(source)
+
+    frame_buffer: Deque[np.ndarray] = deque(
+        maxlen=FRAME_BUFFER_SIZE
+    )
 
     models = [
         (person_vehicle_model, "person_vehicle"),
@@ -35,6 +46,9 @@ def process_camera_stream(
 
     try:
         for frame in read_frames(capture):
+            # Keep the most recent frames in memory.
+            frame_buffer.append(frame)
+
             all_detections = []
 
             for model, model_type in models:
@@ -46,7 +60,9 @@ def process_camera_stream(
 
                 all_detections.extend(detections)
 
-            yield all_detections
+            # Return the current frame, detections,
+            # and the rolling frame buffer.
+            yield frame, all_detections, frame_buffer
 
     finally:
         release_camera_stream(capture)

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,6 +58,11 @@ class Camera(UUIDMixin, TimestampMixin, Base):
         String(20),
         nullable=True,
     )
+
+    zone: Mapped[Optional[dict]] = mapped_column(
+    JSON,
+    nullable=True,
+)
 
     last_seen_at: Mapped[Optional[datetime]] = mapped_column(
         nullable=True,

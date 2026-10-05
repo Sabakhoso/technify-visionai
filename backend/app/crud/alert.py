@@ -1,9 +1,12 @@
+
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert import Alert
+from app.models.event import Event
+from app.models.camera import Camera
 from app.schemas.alert import AlertCreate, AlertUpdate
 
 
@@ -50,6 +53,47 @@ async def get_alerts(
     return list(result.scalars().all())
 
 
+async def get_dashboard_notifications(
+    db: AsyncSession,
+    organization_id: UUID,
+):
+    """Get dashboard notifications for a specific organization."""
+    result = await db.execute(
+        select(Alert, Event, Camera)
+        .join(Event, Alert.event_id == Event.id)
+        .join(Camera, Event.camera_id == Camera.id)
+        .where(
+            Alert.organization_id == organization_id
+        )
+        .order_by(
+            Alert.created_at.desc()
+        )
+    )
+
+    return result.all()
+
+
+async def get_unread_dashboard_notifications(
+    db: AsyncSession,
+    organization_id: UUID,
+):
+    """Get unread dashboard notifications for a specific organization."""
+    result = await db.execute(
+        select(Alert, Event, Camera)
+        .join(Event, Alert.event_id == Event.id)
+        .join(Camera, Event.camera_id == Camera.id)
+        .where(
+            Alert.organization_id == organization_id,
+            Alert.is_read.is_(False),
+        )
+        .order_by(
+            Alert.created_at.desc()
+        )
+    )
+
+    return result.all()
+
+
 async def update_alert(
     db: AsyncSession,
     alert: Alert,
@@ -76,3 +120,4 @@ async def delete_alert(
     """Delete an existing alert."""
     await db.delete(alert)
     await db.commit()
+
