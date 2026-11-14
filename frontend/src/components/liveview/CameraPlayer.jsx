@@ -3,17 +3,37 @@ import Hls from "hls.js";
 import { VideoOff, Loader2, AlertTriangle } from "lucide-react";
 
 /**
- * Plays a real HLS stream (from an RTSP-to-HLS gateway like MediaMTX or
- * go2rtc sitting in front of the camera). Falls back to native HLS on
- * Safari/iOS, uses hls.js everywhere else. No image/gif placeholders.
+ * Enhanced CameraPlayer:
+ * Supports:
+ * 1. MJPEG live streams (e.g. /api/v1/cameras/{id}/stream) -> <img> tag for ultra-low latency (<50ms)
+ * 2. HLS video streams (.m3u8) -> hls.js / native Safari HLS
+ * 3. MP4 / WebM / direct video URLs -> native <video> tag
  */
 export default function CameraPlayer({ streamUrl, cameraName, status }) {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const [playerState, setPlayerState] = useState("loading"); // loading | playing | error | offline
 
+  const isMjpegStream =
+    typeof streamUrl === "string" &&
+    (streamUrl.includes("/stream") || streamUrl.includes("/feed") || streamUrl.includes("mjpeg"));
+
+  const isDirectVideo =
+    typeof streamUrl === "string" &&
+    (streamUrl.endsWith(".mp4") || streamUrl.endsWith(".webm") || streamUrl.endsWith(".ogg"));
+
   useEffect(() => {
-    if (status === "offline" || !streamUrl) {
+    if (!streamUrl) {
+      setPlayerState("offline");
+      return;
+    }
+
+    if (isMjpegStream) {
+      setPlayerState("playing");
+      return;
+    }
+
+    if (status === "offline") {
       setPlayerState("offline");
       return;
     }
@@ -23,7 +43,17 @@ export default function CameraPlayer({ streamUrl, cameraName, status }) {
 
     setPlayerState("loading");
 
-    // Safari / iOS: native HLS support, no hls.js needed
+    if (isDirectVideo) {
+      video.src = streamUrl;
+      video.onloadeddata = () => setPlayerState("playing");
+      video.onerror = () => setPlayerState("error");
+      video.play().catch(() => {});
+      return () => {
+        video.src = "";
+      };
+    }
+
+    // Safari / iOS: native HLS support
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       const onLoaded = () => setPlayerState("playing");
       const onError = () => setPlayerState("error");
@@ -64,7 +94,7 @@ export default function CameraPlayer({ streamUrl, cameraName, status }) {
 
     setPlayerState("error");
     return undefined;
-  }, [streamUrl, status]);
+  }, [streamUrl, status, isMjpegStream, isDirectVideo]);
 
   if (playerState === "offline") {
     return (
@@ -84,6 +114,20 @@ export default function CameraPlayer({ streamUrl, cameraName, status }) {
     );
   }
 
+  if (isMjpegStream) {
+    return (
+      <div className="relative w-full h-full bg-gray-900">
+        <img
+          src={streamUrl}
+          alt={cameraName || "Live camera feed"}
+          className="w-full h-full object-cover"
+          onLoad={() => setPlayerState("playing")}
+          onError={() => setPlayerState("error")}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full bg-gray-900">
       {playerState === "loading" && (
@@ -97,6 +141,7 @@ export default function CameraPlayer({ streamUrl, cameraName, status }) {
         muted
         autoPlay
         playsInline
+        loop={isDirectVideo}
       />
     </div>
   );

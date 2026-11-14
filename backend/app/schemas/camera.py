@@ -4,26 +4,28 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+
 class CameraCreate(BaseModel):
     organization_id: Optional[UUID] = None
     name: str
     location: Optional[str] = None
     rtsp_url: Optional[str] = None
-    status: str = "unknown"
+    status: str = "online"
     is_active: bool = True
+    fps: Optional[int] = 30
+    resolution: Optional[str] = "1920x1080"
+    zone: Optional[dict] = None
+
+
+class CameraUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    rtsp_url: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
     fps: Optional[int] = None
     resolution: Optional[str] = None
     zone: Optional[dict] = None
-
-class CameraUpdate(BaseModel):
-       name: Optional[str] = None
-       location: Optional[str] = None
-       rtsp_url: Optional[str] = None
-       status: Optional[str] = None
-       is_active: Optional[bool] = None
-       fps: Optional[int] = None
-       resolution: Optional[str] = None
-       zone: Optional[dict] = None
 
 
 class CameraResponse(BaseModel):
@@ -32,6 +34,7 @@ class CameraResponse(BaseModel):
     name: str
     location: Optional[str] = None
     rtsp_url: Optional[str] = None
+    stream_url: Optional[str] = None
     status: str
     is_active: bool
     fps: Optional[int] = None
@@ -42,8 +45,3 @@ class CameraResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-
-model_config = ConfigDict(from_attributes=True)
-

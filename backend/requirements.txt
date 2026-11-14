@@ -15,3 +15,7 @@ httpx
 redis
 onnxruntime
 psycopg[binary]
+opencv-python-headless
+ultralytics
+aiosqlite
+websockets

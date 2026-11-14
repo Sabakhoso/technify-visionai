@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.venv/
+.venv/
+env/
+venv/
+*.db
+*.sqlite3
+backend/technify_visionai.db
+backend/yolov8n.pt
+
+# Node / Frontend
+frontend/node_modules/
+node_modules/
+frontend/dist/
+dist/
+.DS_Store
+
+# Environment files
+backend/.env
+frontend/.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+

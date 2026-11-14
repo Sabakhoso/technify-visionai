@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000/ws";
+const rawWsUrl = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000/ws";
+const WS_BASE_URL = rawWsUrl.replace(/\/+$/, "");
 
 /**
  * Generic reconnecting WebSocket subscriber for any backend channel
- * (e.g. "alerts", "cameras"). onMessage must be stable (useCallback)
+ * (e.g. "alerts", "cameras", "live_events"). onMessage must be stable (useCallback)
  * on the caller's side or this reconnects every render.
  */
 export function useSocket(channel, onMessage) {
@@ -18,11 +19,19 @@ export function useSocket(channel, onMessage) {
 
     const connect = () => {
       const token = localStorage.getItem("access_token");
+      const cleanChannel = channel ? channel.replace(/^\/+/, "") : "";
+      const path = cleanChannel ? `${WS_BASE_URL}/${cleanChannel}` : WS_BASE_URL;
       const url = token
-        ? `${WS_BASE_URL}/${channel}?token=${encodeURIComponent(token)}`
-        : `${WS_BASE_URL}/${channel}`;
+        ? `${path}?token=${encodeURIComponent(token)}`
+        : path;
 
-      socket = new WebSocket(url);
+      try {
+        socket = new WebSocket(url);
+      } catch {
+        // Handle initial socket creation failure silently
+        if (!cancelled) reconnectTimer = setTimeout(connect, 5000);
+        return;
+      }
 
       socket.onmessage = (event) => {
         try {
@@ -34,10 +43,14 @@ export function useSocket(channel, onMessage) {
 
       socket.onclose = () => {
         if (cancelled) return;
-        reconnectTimer = setTimeout(connect, 3000);
+        reconnectTimer = setTimeout(connect, 5000);
       };
 
-      socket.onerror = () => socket.close();
+      socket.onerror = () => {
+        try {
+          socket.close();
+        } catch {}
+      };
     };
 
     connect();
@@ -45,7 +58,9 @@ export function useSocket(channel, onMessage) {
     return () => {
       cancelled = true;
       clearTimeout(reconnectTimer);
-      socket?.close();
+      try {
+        socket?.close();
+      } catch {}
     };
   }, [channel]);
 }

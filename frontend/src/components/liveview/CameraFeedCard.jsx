@@ -21,7 +21,7 @@ export default function CameraFeedCard({ camera }) {
 
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 py-2.5 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
         <span className="text-white text-xs font-medium">
-          {camera.id} <span className="text-white/60">•</span> {camera.name}
+          {camera.location ? `${camera.location} • ` : ""}{camera.name}
         </span>
         {isLive && (
           <span className="flex items-center gap-1.5 text-white text-xs font-medium">

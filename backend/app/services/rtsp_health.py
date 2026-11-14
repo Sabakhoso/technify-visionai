@@ -14,8 +14,40 @@ def check_rtsp_stream(
         False -> stream could not be opened/read
     """
 
+import cv2
+
+
+def check_rtsp_stream(
+    rtsp_url: str,
+    timeout_seconds: int = 5,
+) -> bool:
+    """
+    Check whether an RTSP stream or local camera can be opened and
+    whether a video frame can be read.
+
+    Returns:
+        True  -> stream is reachable and a frame was read
+        False -> stream could not be opened/read
+    """
+
     if not rtsp_url:
         return False
+
+    url_str = str(rtsp_url).strip()
+
+    # Local webcam device index (e.g. 0, 1)
+    if url_str.isdigit():
+        device_id = int(url_str)
+        capture = cv2.VideoCapture(device_id)
+        try:
+            if not capture.isOpened():
+                return False
+            success, _ = capture.read()
+            return bool(success)
+        except Exception:
+            return False
+        finally:
+            capture.release()
 
     timeout_milliseconds = timeout_seconds * 1000
 
@@ -35,7 +67,7 @@ def check_rtsp_stream(
         )
 
         opened = capture.open(
-            rtsp_url,
+            url_str,
             cv2.CAP_FFMPEG,
         )
 

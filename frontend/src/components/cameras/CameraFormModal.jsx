@@ -5,7 +5,7 @@ export default function CameraFormModal({ camera, onClose, onSubmit }) {
   const isEdit = Boolean(camera);
   const [name, setName] = useState(camera?.name || "");
   const [location, setLocation] = useState(camera?.location || "");
-  const [rtspUrl, setRtspUrl] = useState(camera?.rtsp_url || "");
+  const [rtspUrl, setRtspUrl] = useState(camera?.rtsp_url || "0");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -14,7 +14,7 @@ export default function CameraFormModal({ camera, onClose, onSubmit }) {
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({ name, location, rtsp_url: rtspUrl });
+      await onSubmit({ name, location, rtsp_url: rtspUrl, status: "online" });
       onClose();
     } catch (err) {
       setError(err?.response?.data?.detail || "Couldn't save this camera.");
@@ -27,11 +27,12 @@ export default function CameraFormModal({ camera, onClose, onSubmit }) {
     <Modal title={isEdit ? "Edit Camera" : "Add Camera"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Name</label>
+          <label className="block text-xs text-gray-500 mb-1">Camera Name</label>
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Office Entrance"
             required
             className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
           />
@@ -43,21 +44,25 @@ export default function CameraFormModal({ camera, onClose, onSubmit }) {
             type="text"
             value={location}
             onChange={(event) => setLocation(event.target.value)}
+            placeholder="e.g. Ground Floor"
             required
             className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">RTSP Source URL</label>
+          <label className="block text-xs text-gray-500 mb-1">Camera Source (Webcam or RTSP Stream)</label>
           <input
             type="text"
             value={rtspUrl}
             onChange={(event) => setRtspUrl(event.target.value)}
-            placeholder="rtsp://192.168.1.10:554/stream1"
+            placeholder="0 (for built-in webcam) or rtsp://..."
             required
             className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
           />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Tip: Enter <strong>0</strong> to connect to your built-in webcam, or enter an RTSP / HTTP camera feed URL.
+          </p>
         </div>
 
         {error && <p className="text-xs text-red-500">{error}</p>}

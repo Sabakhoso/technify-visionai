@@ -9,15 +9,33 @@ from app.api.deps import get_db
 from app.models.organization import Organization
 from app.schemas.organization import OrganizationResponse, OrganizationUpdate
 
-
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
 
 @router.get("/", response_model=List[OrganizationResponse])
 async def get_organizations(db: AsyncSession = Depends(get_db)):
-    """Return all organizations."""
+    """Return all organizations, ensuring a default one exists."""
     result = await db.execute(select(Organization).order_by(Organization.created_at.asc()))
-    return list(result.scalars().all())
+    orgs = list(result.scalars().all())
+
+    if not orgs:
+        default_org = Organization(
+            name="Technify Security Ops",
+            slug="technify-security-ops",
+            plan="enterprise",
+            timezone="UTC",
+            settings={
+                "notify_email": True,
+                "notify_sms": False,
+                "notify_whatsapp": False,
+            },
+        )
+        db.add(default_org)
+        await db.commit()
+        await db.refresh(default_org)
+        orgs = [default_org]
+
+    return orgs
 
 
 @router.get("/{organization_id}", response_model=OrganizationResponse)

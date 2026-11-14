@@ -5,8 +5,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, ForeignKey, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -22,14 +21,14 @@ class Evidence(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "evidence"
 
     event_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("events.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     camera_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("cameras.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

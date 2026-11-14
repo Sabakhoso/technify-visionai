@@ -1,18 +1,8 @@
 import { useEffect, useRef } from "react";
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000/ws";
+const rawWsUrl = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000/ws";
+const WS_BASE_URL = rawWsUrl.replace(/\/+$/, "");
 
-/**
- * Opens a live WebSocket to the backend's camera channel and forwards
- * every parsed message to onMessage. Reconnects automatically with
- * backoff if the connection drops (network blip, backend restart, etc).
- *
- * Expected server message shape:
- * { type: "camera_status", camera_id: string, status: "online"|"offline", stream_url?: string }
- *
- * onMessage MUST be wrapped in useCallback by the caller, or this will
- * reconnect on every render.
- */
 export function useCameraSocket(onMessage) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
@@ -28,25 +18,31 @@ export function useCameraSocket(onMessage) {
         ? `${WS_BASE_URL}/cameras?token=${encodeURIComponent(token)}`
         : `${WS_BASE_URL}/cameras`;
 
-      socket = new WebSocket(url);
+      try {
+        socket = new WebSocket(url);
+      } catch {
+        if (!cancelled) reconnectTimer = setTimeout(connect, 5000);
+        return;
+      }
 
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
           onMessageRef.current(payload);
         } catch {
-          // Ignore malformed frames rather than crashing the UI
+          // Ignore malformed frames
         }
       };
 
       socket.onclose = () => {
         if (cancelled) return;
-        // Backend restarted or network dropped — retry in 3s
-        reconnectTimer = setTimeout(connect, 3000);
+        reconnectTimer = setTimeout(connect, 5000);
       };
 
       socket.onerror = () => {
-        socket.close();
+        try {
+          socket.close();
+        } catch {}
       };
     };
 
@@ -55,7 +51,9 @@ export function useCameraSocket(onMessage) {
     return () => {
       cancelled = true;
       clearTimeout(reconnectTimer);
-      socket?.close();
+      try {
+        socket?.close();
+      } catch {}
     };
   }, []);
 }
